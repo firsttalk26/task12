@@ -1,0 +1,99 @@
+
+
+- hosts: myweb
+
+  tasks: 
+  - command: "ls -l /dvd"
+    register: x
+    ignore_errors: yes
+  - file: 
+      state: directory
+      path: /dvd
+    when: x.rc != 0
+  - mount: 
+      path: "/dvd"
+      src: "/dev/cdrom"
+      state: mounted
+      fstype: "iso9660"
+  - yum_repository: 
+      name: "mydvd1"
+      description: "This is dvd1 for package"
+      baseurl: "/dvd/AppStream"
+      gpgcheck: no
+
+  - yum_repository: 
+      name: "mydvd2"
+      description: "This is dvd2 for package"
+      baseurl: "/dvd/BaseOS"
+      gpgcheck: no
+
+  - name: "install web server"
+    package: 
+      name: "httpd"
+      state: present
+
+  - name: "install php"
+    package: 
+      name: "php"
+      state: present
+  - copy: 
+      dest: "/var/www/html/index.php"
+      src: "index.php"
+
+  - replace: 
+      path: "/etc/httpd/conf/httpd.conf"
+      regexp: "AllowOverride None"
+      replace: "AllowOverride AuthConfig"
+
+  - copy: 
+      src: ".htaccess"
+      dest: "/var/www/html/.htaccess"
+
+  - package: 
+      name: "python36"
+
+  - pip: 
+      name: "passlib"
+
+  - htpasswd: 
+      path: "/etc/www.passwd"
+      name: "dhiru"
+      password: "qwerty"
+  - service:
+      name: "httpd"
+      state: restarted
+      enabled: yes
+
+  - firewalld:
+      port: "80/tcp"
+      permanent: yes
+      state: enabled
+      immediate: yes
+ 
+
+
+
+
+
+
+- hosts: mylb
+
+  tasks: 
+  - name: "install load balancer"
+    package: 
+      name: "haproxy"
+
+
+  - template: 
+      src: "haproxy.cfg.j2"
+      dest: "/etc/haproxy/haproxy.cfg"
+
+  - service: 
+      name: "haproxy"
+      state: restarted 
+
+  - firewalld:
+      port: "5000/tcp"
+      permanent: yes
+      state: enabled
+      immediate: yes
